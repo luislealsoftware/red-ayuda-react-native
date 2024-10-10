@@ -5,11 +5,77 @@ import { Button, Div, Icon, Input, Select, SelectRef, Text } from 'react-native-
 
 const RegisterScreen = () => {
 
+    const [name, setName] = useState("");
     const [country, setCountry] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    interface Errors {
+        name?: string;
+        country?: string;
+        email?: string;
+        password?: string;
+        confirmPassword?: string;
+    }
+
+    const [errors, setErrors] = useState<Errors>({});
     const countryRef = React.createRef<SelectRef>();
 
     const onSelectOption = (value: any) => {
         setCountry(value);
+    };
+
+    const validateForm = () => {
+        let valid = true;
+        let validationErrors: any = {};
+
+        // Validar el nombre completo
+        if (!name) {
+            validationErrors.name = "El nombre completo es obligatorio";
+            valid = false;
+        }
+
+        // Validar el país
+        if (!country) {
+            validationErrors.country = "Debe seleccionar un país";
+            valid = false;
+        }
+
+        // Validar el correo electrónico
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || !emailRegex.test(email)) {
+            validationErrors.email = "Debe ingresar un correo electrónico válido";
+            valid = false;
+        }
+
+        // Validar la contraseña
+        if (password.length < 8) {
+            validationErrors.password = "La contraseña debe tener al menos 8 caracteres";
+            valid = false;
+        }
+
+        // Validar la confirmación de la contraseña
+        if (password !== confirmPassword) {
+            validationErrors.confirmPassword = "Las contraseñas no coinciden";
+            valid = false;
+        }
+
+        setErrors(validationErrors);
+        return valid;
+    };
+
+    const handleSubmit = () => {
+        if (validateForm()) {
+            // Aquí envías los datos al backend si todo es válido
+            console.log({
+                name,
+                country,
+                email,
+                password,
+            });
+        } else {
+            console.log("Errores en la validación:", errors);
+        }
     };
 
     const countries = [
@@ -59,7 +125,11 @@ const RegisterScreen = () => {
                 placeholder="Nombre completo"
                 p={10}
                 focusBorderColor="blue700"
-                prefix={<Icon name="user" color="gray900" fontFamily="Feather" />} />
+                value={name}
+                onChangeText={(text) => setName(text)}
+                prefix={<Icon name="user" color="gray900" fontFamily="Feather" />}
+            />
+            {errors.name && <Text color="red500">{errors.name}</Text>}
 
             <Button
                 block
@@ -76,6 +146,7 @@ const RegisterScreen = () => {
                 }}>
                 {country.length ? country.toString() : 'Selecciona país de origen'}
             </Button>
+            {errors.country && <Text color="red500">{errors.country}</Text>}
 
             <Select
                 onSelect={onSelectOption}
@@ -93,72 +164,50 @@ const RegisterScreen = () => {
                 )}
             />
 
-            <Input mt="md" placeholder='Fecha de nacimiento' p={10} focusBorderColor="blue700" />
-
-            <Input
-                mt="md"
-                placeholder="Número de teléfono"
-                p={10}
-                focusBorderColor="blue700"
-                prefix={<Icon name="phone" color="gray900" fontFamily="Feather" />} />
-
-            <Input
-                mt="md"
-                placeholder="Usuario"
-                p={10}
-                focusBorderColor="blue700"
-                prefix={<Icon name="user" color="gray900" fontFamily="Feather" />}
-            />
-
             <Input
                 mt="md"
                 placeholder="Correo electrónico"
                 p={10}
                 focusBorderColor="blue700"
+                value={email}
+                onChangeText={(text) => setEmail(text)}
                 prefix={<Icon name="mail" color="gray900" fontFamily="Feather" />}
             />
+            {errors.email && <Text color="red500">{errors.email}</Text>}
 
             <Input
+                mt="md"
                 placeholder="Contraseña"
-                mt="md"
                 p={10}
                 secureTextEntry
                 focusBorderColor="blue700"
+                value={password}
+                onChangeText={(text) => setPassword(text)}
                 prefix={<Icon name="lock" color="gray900" fontFamily="Feather" />}
             />
+            {errors.password && <Text color="red500">{errors.password}</Text>}
 
             <Input
-                placeholder="Repetir contraseña"
                 mt="md"
+                placeholder="Repetir contraseña"
                 p={10}
                 secureTextEntry
                 focusBorderColor="blue700"
+                value={confirmPassword}
+                onChangeText={(text) => setConfirmPassword(text)}
                 prefix={<Icon name="lock" color="gray900" fontFamily="Feather" />}
-
             />
-
-            {/* Accept terms and conditions */}
-            <Div row mt="md">
-                <Icon
-                    name="check"
-                    color="blue700"
-                    fontFamily="Feather"
-                    fontSize="2xl"
-                    mr="md"
-                />
-                <Text>
-                    Al registrarme, acepto los términos y condiciones de uso.
-                </Text></Div>
+            {errors.confirmPassword && <Text color="red500">{errors.confirmPassword}</Text>}
 
             <Div>
-                <Button block mt="md" bg="blue700" color="white">
-                    Registrarme</Button>
+                <Button block mt="md" bg="blue700" color="white" onPress={handleSubmit}>
+                    Registrarme
+                </Button>
             </Div>
 
             <Link href="/auth/login" style={{ marginTop: 10 }}>
                 <Text textAlign="center">¿Ya tienes cuenta? Inicia sesión</Text>
             </Link>
-
         </Div>
     )
 }
