@@ -20,7 +20,7 @@ export default function HomeLayout() {
 
     return (
         <ThemeProvider>
-            <SafeAreaView>
+            <SafeAreaView style={{flex: 1}}>
                 <Slot />
             </SafeAreaView>
         </ThemeProvider>
