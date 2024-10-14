@@ -41,6 +41,7 @@ const LoginScreen = () => {
         <Div m="3xl" alignItems='center'>
             <Text fontSize="6xl">Iniciar sesión</Text>
             <Input
+                autoCapitalize='none'
                 onChangeText={(text) => setEmail(text)}
                 value={email}
                 mt="md"
