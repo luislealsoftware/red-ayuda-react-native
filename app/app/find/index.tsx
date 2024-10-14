@@ -1,7 +1,8 @@
 import React from 'react'
-import { FlatList } from 'react-native';
+import { Alert, FlatList } from 'react-native';
 import { Badge, Button, Div, Fab, Header, Host, Icon, Image, Input, Portal, Text } from 'react-native-magnus';
 import Constants from "expo-constants";
+import { supabase } from '../../../lib/supabase';
 
 const friends = [
     {
@@ -43,28 +44,41 @@ const FindPage = () => {
             <Header
                 shadow={0}
                 suffix={
-                    <Badge
-                        bg="green500"
-                        zIndex={10}
-                        right={-5}
-                        top={0}
-                        h={12}
-                        w={12}>
+                    <Div row alignItems="center">
+                        <Badge
+                            bg="green500"
+                            zIndex={10}
+                            right={-5}
+                            top={0}
+                            h={12}
+                            w={12}>
+                            <Button
+                                bg="gray200"
+                                p="none"
+                                rounded="circle"
+                                onPress={() => { }}>
+                                <Image
+                                    h={40}
+                                    w={40}
+                                    source={{
+                                        uri:
+                                            'https://images.unsplash.com/photo-1561037404-61cd46aa615b?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=100&q=80',
+                                    }}
+                                />
+                            </Button>
+                        </Badge>
+
+                        {/* Botón para cerrar sesión */}
                         <Button
-                            bg="gray200"
-                            p="none"
-                            rounded="circle"
-                            onPress={() => { }}>
-                            <Image
-                                h={40}
-                                w={40}
-                                source={{
-                                    uri:
-                                        'https://images.unsplash.com/photo-1561037404-61cd46aa615b?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=100&q=80',
-                                }}
-                            />
+                            bg="red500"
+                            ml="lg"
+                            onPress={async () => {
+                                await supabase.auth.signOut();  // Cierra la sesión
+                                Alert.alert('Sesión cerrada'); // Opcional: alerta de confirmación
+                            }}>
+                            <Text color="white">Cerrar sesión</Text>
                         </Button>
-                    </Badge>
+                    </Div>
                 }>
                 <Div>
                     <Text fontWeight="bold" fontSize="5xl">

@@ -1,15 +1,16 @@
 import { Link } from 'expo-router';
 import React, { useState } from 'react';
 import { Button, Div, Icon, Input, Select, SelectRef, Text } from 'react-native-magnus';
-
+import { supabase } from '../../../lib/supabase'; // Asegúrate de tener esta importación para usar supabase
+import { Alert } from 'react-native';
 
 const RegisterScreen = () => {
-
     const [name, setName] = useState("");
     const [country, setCountry] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [loading, setLoading] = useState(false);
     interface Errors {
         name?: string;
         country?: string;
@@ -21,40 +22,41 @@ const RegisterScreen = () => {
     const [errors, setErrors] = useState<Errors>({});
     const countryRef = React.createRef<SelectRef>();
 
-    const onSelectOption = (value: any) => {
+    const onSelectOption = (value: React.SetStateAction<string>) => {
         setCountry(value);
     };
 
     const validateForm = () => {
         let valid = true;
-        let validationErrors: any = {};
+        let validationErrors = {
+            name: "",
+            country: "",
+            email: "",
+            password: "",
+            confirmPassword: "",
+        };
 
-        // Validar el nombre completo
         if (!name) {
             validationErrors.name = "El nombre completo es obligatorio";
             valid = false;
         }
 
-        // Validar el país
         if (!country) {
             validationErrors.country = "Debe seleccionar un país";
             valid = false;
         }
 
-        // Validar el correo electrónico
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!email || !emailRegex.test(email)) {
             validationErrors.email = "Debe ingresar un correo electrónico válido";
             valid = false;
         }
 
-        // Validar la contraseña
         if (password.length < 8) {
             validationErrors.password = "La contraseña debe tener al menos 8 caracteres";
             valid = false;
         }
 
-        // Validar la confirmación de la contraseña
         if (password !== confirmPassword) {
             validationErrors.confirmPassword = "Las contraseñas no coinciden";
             valid = false;
@@ -64,56 +66,25 @@ const RegisterScreen = () => {
         return valid;
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (validateForm()) {
-            // Aquí envías los datos al backend si todo es válido
-            console.log({
-                name,
-                country,
-                email,
-                password,
+            setLoading(true);
+            const { error } = await supabase.auth.signUp({
+                email: email,
+                password: password,
             });
-        } else {
-            console.log("Errores en la validación:", errors);
+
+            if (error) {
+                Alert.alert("Error al registrarse", error.message);
+            } else {
+                Alert.alert("Registro exitoso", "Verifica tu correo electrónico para confirmar tu cuenta.");
+            }
+            setLoading(false);
         }
     };
 
-    const countries = [
-        'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Argentina',
-        'Armenia', 'Australia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain',
-        'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin',
-        'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil',
-        'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodia',
-        'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile',
-        'China', 'Colombia', 'Comoros', 'Congo', 'Costa Rica', 'Croatia',
-        'Cuba', 'Cyprus', 'Czech Republic', 'Denmark', 'Djibouti', 'Dominica',
-        'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea',
-        'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland',
-        'France', 'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece',
-        'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti',
-        'Honduras', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran',
-        'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan',
-        'Kazakhstan', 'Kenya', 'Kiribati', 'Kuwait', 'Kyrgyzstan', 'Laos',
-        'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein',
-        'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Malaysia',
-        'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania', 'Mauritius',
-        'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro',
-        'Morocco', 'Mozambique', 'Myanmar', 'Namibia', 'Nauru', 'Nepal',
-        'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria',
-        'North Korea', 'North Macedonia', 'Norway', 'Oman', 'Pakistan',
-        'Palau', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines',
-        'Poland', 'Portugal', 'Qatar', 'Romania', 'Russia', 'Rwanda',
-        'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines',
-        'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia',
-        'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore',
-        'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa',
-        'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname',
-        'Sweden', 'Switzerland', 'Syria', 'Taiwan', 'Tajikistan', 'Tanzania',
-        'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago',
-        'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 'Uganda', 'Ukraine',
-        'United Arab Emirates', 'United Kingdom', 'United States', 'Uruguay',
-        'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam',
-        'Yemen', 'Zambia', 'Zimbabwe'
+    const countries: string[] = [
+        "Afganistán", "Albania", "Alemania", "Andorra", "Angola", "Antigua y Barbuda", "Arabia Saudita", "Argelia", "Argentina", "Armenia", "Australia", "Austria", "Azerbaiyán", "Bahamas", "Bangladés", "Barbados", "Baréin", "Bélgica", "Belice", "Benín", "Bielorrusia", "Birmania", "Bolivia", "Bosnia y Herzegovina", "Botsuana", "Brasil", "Brunéi", "Bulgaria", "Burkina Faso", "Burundi", "Bután", "Cabo Verde", "Camboya", "Camerún", "Canadá", "Catar", "Chad", "Chile", "China", "Chipre", "Ciudad del Vaticano", "Colombia", "Comoras", "Corea del Norte", "Corea del Sur", "Costa de Marfil", "Costa Rica", "Croacia", "Cuba", "Dinamarca", "Dominica", "Ecuador", "Egipto", "El Salvador", "Emiratos Árabes Unidos", "Eritrea", "Eslovaquia", "Eslovenia", "España", "Estados Unidos", "Estonia", "Etiopía", "Filipinas", "Finlandia", "Fiyi", "Francia", "Gabón", "Gambia", "Georgia", "Ghana", "Granada", "Grecia", "Guatemala", "Guyana", "Guinea", "Guinea ecuatorial", "Guinea-Bisáu", "Haití", "Honduras", "Hungría", "India", "Indonesia", "Irak", "Irán", "Irlanda", "Islandia", "Islas Marshall", "Islas Salomón", "Israel", "Italia", "Jamaica", "Japón", "Jordania", "Kazajistán", "Kenia", "Kirguistán", "Kiribati", "Kuwait", "Laos", "Lesoto", "Letonia", "Líbano", "Liberia", "Libia", "Liechtenstein", "Lituania", "Luxemburgo", "Madagascar", "Malasia", "Malaui", "Maldivas", "Malí", "Malta", "Marruecos", "Mauricio", "Mauritania", "México", "Micronesia", "Moldavia", "Mónaco", "Mongolia", "Montenegro", "Mozambique", "Namibia", "Nauru", "Nepal", "Nicaragua", "Níger", "Nigeria", "Noruega", "Nueva Zelanda", "Omán", "Países Bajos", "Pakistán", "Palaos", "Palestina", "Panamá", "Papúa Nueva Guinea", "Paraguay", "Perú", "Polonia", "Portugal", "Reino Unido", "República Centroafricana", "República Checa", "República de Macedonia", "República del Congo", "República Democrática del Congo", "República Dominicana", "República Sudafricana", "Ruanda", "Rumanía", "Rusia", "Samoa", "San Cristóbal y Nieves", "San Marino", "San Vicente y las Granadinas", "Santa Lucía", "Santo Tomé y Príncipe", "Senegal", "Serbia", "Seychelles", "Sierra Leona", "Singapur", "Siria", "Somalia", "Sri Lanka", "Suazilandia", "Sudán", "Sudán del Sur", "Suecia", "Suiza", "Surinam", "Tailandia", "Tanzania", "Tayikistán", "Timor Oriental", "Togo", "Tonga", "Trinidad y Tobago", "Túnez", "Turkmenistán", "Turquía", "Tuvalu", "Ucrania", "Uganda", "Uruguay", "Uzbekistán", "Vanuatu", "Venezuela", "Vietnam", "Yemen", "Yibuti", "Zambia", "Zimbabue"
     ];
 
     return (
@@ -126,7 +97,7 @@ const RegisterScreen = () => {
                 p={10}
                 focusBorderColor="blue700"
                 value={name}
-                onChangeText={(text) => setName(text)}
+                onChangeText={setName}
                 prefix={<Icon name="user" color="gray900" fontFamily="Feather" />}
             />
             {errors.name && <Text color="red500">{errors.name}</Text>}
@@ -139,11 +110,8 @@ const RegisterScreen = () => {
                 bg="white"
                 color="gray900"
                 borderColor="gray300"
-                onPress={() => {
-                    if (countryRef.current) {
-                        countryRef.current.open();
-                    }
-                }}>
+                onPress={() => countryRef.current?.open()}
+            >
                 {country.length ? country.toString() : 'Selecciona país de origen'}
             </Button>
             {errors.country && <Text color="red500">{errors.country}</Text>}
@@ -170,7 +138,7 @@ const RegisterScreen = () => {
                 p={10}
                 focusBorderColor="blue700"
                 value={email}
-                onChangeText={(text) => setEmail(text)}
+                onChangeText={setEmail}
                 prefix={<Icon name="mail" color="gray900" fontFamily="Feather" />}
             />
             {errors.email && <Text color="red500">{errors.email}</Text>}
@@ -182,7 +150,7 @@ const RegisterScreen = () => {
                 secureTextEntry
                 focusBorderColor="blue700"
                 value={password}
-                onChangeText={(text) => setPassword(text)}
+                onChangeText={setPassword}
                 prefix={<Icon name="lock" color="gray900" fontFamily="Feather" />}
             />
             {errors.password && <Text color="red500">{errors.password}</Text>}
@@ -194,14 +162,21 @@ const RegisterScreen = () => {
                 secureTextEntry
                 focusBorderColor="blue700"
                 value={confirmPassword}
-                onChangeText={(text) => setConfirmPassword(text)}
+                onChangeText={setConfirmPassword}
                 prefix={<Icon name="lock" color="gray900" fontFamily="Feather" />}
             />
             {errors.confirmPassword && <Text color="red500">{errors.confirmPassword}</Text>}
 
             <Div>
-                <Button block mt="md" bg="blue700" color="white" onPress={handleSubmit}>
-                    Registrarme
+                <Button
+                    block
+                    mt="md"
+                    bg="blue700"
+                    color="white"
+                    disabled={loading}
+                    onPress={handleSubmit}
+                >
+                    {loading ? 'Registrando...' : 'Registrarme'}
                 </Button>
             </Div>
 
@@ -209,7 +184,7 @@ const RegisterScreen = () => {
                 <Text textAlign="center">¿Ya tienes cuenta? Inicia sesión</Text>
             </Link>
         </Div>
-    )
+    );
 }
 
 export default RegisterScreen;
