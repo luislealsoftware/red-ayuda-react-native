@@ -4,6 +4,7 @@ import { Text } from 'react-native'
 const AppHome = () => {
     return (
         <Text>AppHome</Text>
+        
     )
 }
 
