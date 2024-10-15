@@ -1,43 +1,63 @@
-import React from 'react'
+import React, { useState } from 'react';
 import { Alert, FlatList } from 'react-native';
-import { Badge, Button, Div, Fab, Header, Host, Icon, Image, Input, Portal, Text } from 'react-native-magnus';
-import Constants from "expo-constants";
+import { Badge, Button, Div, Header, Image, Input, Text } from 'react-native-magnus';
 import { supabase } from '../../../lib/supabase';
 
-const friends = [
-    {
-        id: 1,
-        image:
-            'https://images.unsplash.com/photo-1502673530728-f79b4cab31b1?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1950&q=80',
-    },
-    {
-        id: 2,
-        image:
-            'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1927&q=80',
-    },
-    {
-        id: 3,
-        image:
-            'https://images.unsplash.com/photo-1516640997890-5e4c83df8419?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1950&q=80',
-    },
-    {
-        id: 4,
-        image:
-            'https://images.unsplash.com/photo-1516467508483-a7212febe31a?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1952&q=80',
-    },
-    {
-        id: 5,
-        image:
-            'https://images.unsplash.com/photo-1453365607868-7deed8cc7d26?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1950&q=80',
-    },
-    {
-        id: 6,
-        image:
-            'https://images.unsplash.com/photo-1501820488136-72669149e0d4?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1950&q=80',
-    },
-];
+// Definimos la interfaz para los usuarios
+type User = {
+    id: string;
+    name: string;
+    country: string;
+};
+
+// Definimos la interfaz para los amigos (si la estructura es diferente, podrías ajustarla)
+interface Friend {
+    id: string;
+    name: string;
+    image: string;
+}
 
 const FindPage = () => {
+    const [searchQuery, setSearchQuery] = useState<string>(''); // Tipado explícito para el query
+    const [searchResults, setSearchResults] = useState<User[]>([]); // Lista de usuarios que devuelve la búsqueda
+    const [friendsList, setFriendsList] = useState<Friend[]>([]); // Lista de amigos
+
+    // Función para buscar usuarios
+    const searchUsers = async (query: string) => {
+        console.log('Query final:', `%${query}%`);
+
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, name, country')
+            .ilike('name', `%${query}%`);
+
+        if (error) {
+            console.error('Error al buscar usuarios:', error.message);
+            return;
+        }
+
+        if (data) {
+            setSearchResults(data);
+        }
+    };
+
+    // Función para agregar un amigo a la red
+    const addFriend = async (friendId: string) => {
+        const { data: { user } } = await supabase.auth.getUser(); // Obtén el ID del usuario actual
+        const userId = user?.id;
+
+        const { error } = await supabase
+            .from('friends')
+            .insert([
+                { user_id: userId, friend_id: friendId }
+            ]);
+
+        if (error) {
+            console.error('Error al agregar amigo:', error.message);
+        } else {
+            Alert.alert('Amigo agregado con éxito');
+        }
+    };
 
     return (
         <>
@@ -68,7 +88,6 @@ const FindPage = () => {
                             </Button>
                         </Badge>
 
-                        {/* Botón para cerrar sesión */}
                         <Button
                             bg="red500"
                             ml="lg"
@@ -89,10 +108,44 @@ const FindPage = () => {
                     </Text>
                 </Div>
             </Header>
-            <Input placeholder="Buscar amigos" mt={10} mb={10} mx="md" suffix={<Icon name='mail' />} />
+
+            {/* Input para buscar amigos */}
+            <Input
+                placeholder="Buscar por nombre"
+                mt={10}
+                mb={10}
+                mx="md"
+                value={searchQuery}
+                onChangeText={(text) => setSearchQuery(text)} // Actualiza el estado del query
+                onSubmitEditing={(e) => searchUsers(e.nativeEvent.text)} // Ejecuta la búsqueda cuando el usuario presiona "Enter"
+            />
+
+            {/* Resultados de búsqueda */}
+            {searchResults.length > 0 && (
+                <>
+                    <Text mx="md" fontWeight="bold" mb="lg">Resultados de búsqueda</Text>
+                    <FlatList
+                        data={searchResults}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({item}) => (
+                            <Div m="md" row alignItems="center">
+                                <Text ml="md">{item.name || item.country}</Text>
+                                <Button
+                                    bg="blue500"
+                                    ml="auto"
+                                    onPress={() => addFriend(item.id)}>
+                                    <Text color="white">Agregar</Text>
+                                </Button>
+                            </Div>
+                        )}
+                    />
+                </>
+            )}
+
+            {/* Lista de amigos ya agregados */}
             <FlatList
-                data={friends}
-                keyExtractor={(item) => item.id.toString()}
+                data={friendsList}
+                keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                     <Div m="md">
                         <Image
@@ -101,10 +154,13 @@ const FindPage = () => {
                             rounded="xl"
                             source={{ uri: item.image }}
                         />
+                        {/* Si deseas agregar un texto descriptivo aquí, asegúrate de envolverlo en un componente <Text> */}
+                        <Text>{item.name}</Text> {/* Asegúrate de que item.name esté envuelto en <Text> */}
                     </Div>
-                )} />
+                )}
+            />
         </>
-    )
-}
+    );
+};
 
 export default FindPage;

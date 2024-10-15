@@ -69,16 +69,41 @@ const RegisterScreen = () => {
     const handleSubmit = async () => {
         if (validateForm()) {
             setLoading(true);
-            const { error } = await supabase.auth.signUp({
+
+            // Intentamos registrar al usuario en el auth de Supabase
+            const { data, error } = await supabase.auth.signUp({
                 email: email,
                 password: password,
             });
 
             if (error) {
                 Alert.alert("Error al registrarse", error.message);
-            } else {
-                Alert.alert("Registro exitoso", "Verifica tu correo electrónico para confirmar tu cuenta.");
+                setLoading(false);
+                return;
             }
+
+            // Si el registro fue exitoso, obtenemos el user ID para la relación en la tabla de usuarios
+            const userId = data.user?.id;
+
+            if (userId) {
+                // Guardamos la información adicional del usuario en la tabla "users"
+                const { error: insertError } = await supabase
+                    .from('users')
+                    .insert([
+                        {
+                            auth_user_id: userId, // Guardamos el ID del auth
+                            name: name,
+                            country: country,
+                        }
+                    ]);
+
+                if (insertError) {
+                    Alert.alert("Error al guardar información de usuario", insertError.message);
+                } else {
+                    Alert.alert("Registro exitoso", "Verifica tu correo electrónico para confirmar tu cuenta.");
+                }
+            }
+
             setLoading(false);
         }
     };
