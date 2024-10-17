@@ -200,7 +200,7 @@ const FindPage = () => {
                                 h={200}
                                 w={200}
                                 rounded="xl"
-                                source={{ uri: item.image }}
+                                source={{ uri: 'https://via.placeholder.com/200' }}
                             />
                             <Text>{item.name}</Text>
                         </Div>
