@@ -5,22 +5,16 @@ import { supabase } from '../../../lib/supabase';
 
 // Definimos la interfaz para los usuarios
 type User = {
-    id: string;
+    auth_user_id: string;
     name: string;
     country: string;
-};
-
-// Definimos la interfaz para los amigos (si la estructura es diferente, podrías ajustarla)
-interface Friend {
-    id: string;
-    name: string;
     image: string;
-}
+};
 
 const FindPage = () => {
     const [searchQuery, setSearchQuery] = useState<string>(''); // Tipado explícito para el query
     const [searchResults, setSearchResults] = useState<User[]>([]); // Lista de usuarios que devuelve la búsqueda
-    const [friendsList, setFriendsList] = useState<Friend[]>([]); // Lista de amigos
+    const [friendsList, setFriendsList] = useState<User[]>([]); // Lista de amigos
 
     useEffect(() => {
         fetchFriends(); // Llama a la función para obtener amigos al cargar el componente
@@ -31,7 +25,7 @@ const FindPage = () => {
 
         const { data, error } = await supabase
             .from('users')
-            .select('id, name, country')
+            .select('auth_user_id, name, country, image')
             .ilike('name', `%${query}%`);
 
         if (error) {
@@ -49,23 +43,10 @@ const FindPage = () => {
         const { data: { user } } = await supabase.auth.getUser(); // Obtén el ID del usuario actual
         const userId = user?.id;
 
-        const { data: currentIdData, error: userError } = await supabase
-            .from('users')
-            .select('id')
-            .eq('auth_user_id', userId)
-            .single(); // Obtiene un solo registro
-
-        if (userError) {
-            console.error('Error al obtener el ID del usuario:', userError.message);
-            return; // Maneja el error apropiadamente
-        }
-
-        const currentId = currentIdData?.id;
-
         const { data, error } = await supabase
             .from('friends')
             .select('friend_id')
-            .eq('user_id', currentId);
+            .eq('user_id', userId);
 
         if (error) {
             console.error('Error al cargar amigos:', error.message);
@@ -76,8 +57,8 @@ const FindPage = () => {
             const friendIds = data.map(friend => friend.friend_id);
             const { data: friendsData, error: fetchError } = await supabase
                 .from('users')
-                .select('id, name, image') // Asegúrate de que 'image' esté en la tabla de usuarios
-                .in('id', friendIds);
+                .select('auth_user_id, name, image, country') // Asegúrate de que 'image' esté en la tabla de usuarios
+                .in('auth_user_id', friendIds);
 
             if (fetchError) {
                 console.error('Error al cargar usuarios amigos:', fetchError.message);
@@ -94,7 +75,7 @@ const FindPage = () => {
 
         const { data: currentIdData, error: userError } = await supabase
             .from('users')
-            .select('id')
+            .select('auth_user_id')
             .eq('auth_user_id', userId)
             .single(); // Obtiene un solo registro
 
@@ -103,7 +84,7 @@ const FindPage = () => {
             return; // Maneja el error apropiadamente
         }
 
-        const currentId = currentIdData?.id;
+        const currentId = currentIdData?.auth_user_id;
 
         const { error } = await supabase
             .from('friends')
@@ -186,21 +167,21 @@ const FindPage = () => {
                     <Text mx="md" fontWeight="bold" mb="lg">Resultados de búsqueda</Text>
                     <FlatList
                         data={searchResults}
-                        keyExtractor={(item) => item.id}
+                        keyExtractor={(item) => item.auth_user_id}
                         renderItem={({ item }) => (
                             <Div m="md" row alignItems="center">
                                 <Text ml="md">{item.name || item.country}</Text>
                                 <Button
-                                    bg={friendsList.some(friend => friend.id === item.id) ? "gray500" : "blue500"}
+                                    bg={friendsList.some(friend => friend.auth_user_id === item.auth_user_id) ? "gray500" : "blue500"}
                                     ml="auto"
                                     onPress={() => {
-                                        if (!friendsList.some(friend => friend.id === item.id)) {
-                                            addFriend(item.id);
+                                        if (!friendsList.some(friend => friend.auth_user_id === item.auth_user_id)) {
+                                            addFriend(item.auth_user_id);
                                         }
                                     }}
-                                    disabled={friendsList.some(friend => friend.id === item.id)}
+                                    disabled={friendsList.some(friend => friend.auth_user_id === item.auth_user_id)}
                                 >
-                                    <Text color="white">{friendsList.some(friend => friend.id === item.id) ? 'Ya agregado' : 'Agregar'}</Text>
+                                    <Text color="white">{friendsList.some(friend => friend.auth_user_id === item.auth_user_id) ? 'Ya agregado' : 'Agregar'}</Text>
                                 </Button>
                             </Div>
                         )}
@@ -212,7 +193,7 @@ const FindPage = () => {
             {friendsList.length > 0 && (
                 <FlatList
                     data={friendsList}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => item.auth_user_id}
                     renderItem={({ item }) => (
                         <Div m="md">
                             <Image
