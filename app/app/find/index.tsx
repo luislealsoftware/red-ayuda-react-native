@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, FlatList } from 'react-native';
 import { Badge, Button, Div, Header, Image, Input, Text } from 'react-native-magnus';
 import { supabase } from '../../../lib/supabase';
@@ -22,9 +22,12 @@ const FindPage = () => {
     const [searchResults, setSearchResults] = useState<User[]>([]); // Lista de usuarios que devuelve la búsqueda
     const [friendsList, setFriendsList] = useState<Friend[]>([]); // Lista de amigos
 
+    useEffect(() => {
+        fetchFriends(); // Llama a la función para obtener amigos al cargar el componente
+    }, []);
+
     // Función para buscar usuarios
     const searchUsers = async (query: string) => {
-        console.log('Query final:', `%${query}%`);
 
         const { data, error } = await supabase
             .from('users')
@@ -41,21 +44,78 @@ const FindPage = () => {
         }
     };
 
+    // Función para obtener la lista de amigos
+    const fetchFriends = async () => {
+        const { data: { user } } = await supabase.auth.getUser(); // Obtén el ID del usuario actual
+        const userId = user?.id;
+
+        const { data: currentIdData, error: userError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('auth_user_id', userId)
+            .single(); // Obtiene un solo registro
+
+        if (userError) {
+            console.error('Error al obtener el ID del usuario:', userError.message);
+            return; // Maneja el error apropiadamente
+        }
+
+        const currentId = currentIdData?.id;
+
+        const { data, error } = await supabase
+            .from('friends')
+            .select('friend_id')
+            .eq('user_id', currentId);
+
+        if (error) {
+            console.error('Error al cargar amigos:', error.message);
+            return;
+        }
+
+        if (data) {
+            const friendIds = data.map(friend => friend.friend_id);
+            const { data: friendsData, error: fetchError } = await supabase
+                .from('users')
+                .select('id, name, image') // Asegúrate de que 'image' esté en la tabla de usuarios
+                .in('id', friendIds);
+
+            if (fetchError) {
+                console.error('Error al cargar usuarios amigos:', fetchError.message);
+            } else {
+                setFriendsList(friendsData);
+            }
+        }
+    };
+
     // Función para agregar un amigo a la red
     const addFriend = async (friendId: string) => {
         const { data: { user } } = await supabase.auth.getUser(); // Obtén el ID del usuario actual
         const userId = user?.id;
 
+        const { data: currentIdData, error: userError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('auth_user_id', userId)
+            .single(); // Obtiene un solo registro
+
+        if (userError) {
+            console.error('Error al obtener el ID del usuario:', userError.message);
+            return; // Maneja el error apropiadamente
+        }
+
+        const currentId = currentIdData?.id;
+
         const { error } = await supabase
             .from('friends')
-            .insert([
-                { user_id: userId, friend_id: friendId }
-            ]);
+            .insert([{ user_id: currentId, friend_id: friendId }]);
 
         if (error) {
             console.error('Error al agregar amigo:', error.message);
         } else {
             Alert.alert('Amigo agregado con éxito');
+
+            // En lugar de solo agregar el amigo manualmente, volvemos a cargar toda la lista de amigos
+            fetchFriends(); // Recarga la lista de amigos desde la base de datos
         }
     };
 
@@ -127,14 +187,20 @@ const FindPage = () => {
                     <FlatList
                         data={searchResults}
                         keyExtractor={(item) => item.id}
-                        renderItem={({item}) => (
+                        renderItem={({ item }) => (
                             <Div m="md" row alignItems="center">
                                 <Text ml="md">{item.name || item.country}</Text>
                                 <Button
-                                    bg="blue500"
+                                    bg={friendsList.some(friend => friend.id === item.id) ? "gray500" : "blue500"}
                                     ml="auto"
-                                    onPress={() => addFriend(item.id)}>
-                                    <Text color="white">Agregar</Text>
+                                    onPress={() => {
+                                        if (!friendsList.some(friend => friend.id === item.id)) {
+                                            addFriend(item.id);
+                                        }
+                                    }}
+                                    disabled={friendsList.some(friend => friend.id === item.id)}
+                                >
+                                    <Text color="white">{friendsList.some(friend => friend.id === item.id) ? 'Ya agregado' : 'Agregar'}</Text>
                                 </Button>
                             </Div>
                         )}
@@ -143,22 +209,23 @@ const FindPage = () => {
             )}
 
             {/* Lista de amigos ya agregados */}
-            <FlatList
-                data={friendsList}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                    <Div m="md">
-                        <Image
-                            h={200}
-                            w={200}
-                            rounded="xl"
-                            source={{ uri: item.image }}
-                        />
-                        {/* Si deseas agregar un texto descriptivo aquí, asegúrate de envolverlo en un componente <Text> */}
-                        <Text>{item.name}</Text> {/* Asegúrate de que item.name esté envuelto en <Text> */}
-                    </Div>
-                )}
-            />
+            {friendsList.length > 0 && (
+                <FlatList
+                    data={friendsList}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                        <Div m="md">
+                            <Image
+                                h={200}
+                                w={200}
+                                rounded="xl"
+                                source={{ uri: item.image }}
+                            />
+                            <Text>{item.name}</Text>
+                        </Div>
+                    )}
+                />
+            )}
         </>
     );
 };
