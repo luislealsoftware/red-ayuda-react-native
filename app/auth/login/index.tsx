@@ -1,15 +1,16 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Button, Div, Icon, Input, Text } from 'react-native-magnus';
 import { supabase } from '../../../lib/supabase';
 import { Alert } from 'react-native';
-
 
 const LoginScreen = () => {
 
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
+
+    const router = useRouter();
 
     async function signInWithEmail() {
         setLoading(true)
@@ -20,21 +21,7 @@ const LoginScreen = () => {
 
         if (error) Alert.alert(error.message)
         setLoading(false)
-    }
-
-    async function signUpWithEmail() {
-        setLoading(true)
-        const {
-            data: { session },
-            error,
-        } = await supabase.auth.signUp({
-            email: email,
-            password: password,
-        })
-
-        if (error) Alert.alert(error.message)
-        if (!session) Alert.alert('Please check your inbox for email verification!')
-        setLoading(false)
+        if (!error) router.push('/app');
     }
 
     return (

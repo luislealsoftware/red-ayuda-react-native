@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, FlatList } from 'react-native';
 import { Badge, Button, Div, Header, Image, Input, Text } from 'react-native-magnus';
 import { supabase } from '../../../lib/supabase';
+import { useRouter } from 'expo-router';
 
 // Definimos la interfaz para los usuarios
 type User = {
@@ -15,6 +16,8 @@ const FindPage = () => {
     const [searchQuery, setSearchQuery] = useState<string>(''); // Tipado explícito para el query
     const [searchResults, setSearchResults] = useState<User[]>([]); // Lista de usuarios que devuelve la búsqueda
     const [friendsList, setFriendsList] = useState<User[]>([]); // Lista de amigos
+
+    const router = useRouter(); // Importa el hook de enrutamiento
 
     useEffect(() => {
         fetchFriends(); // Llama a la función para obtener amigos al cargar el componente
@@ -134,6 +137,7 @@ const FindPage = () => {
                             ml="lg"
                             onPress={async () => {
                                 await supabase.auth.signOut();  // Cierra la sesión
+                                router.push('/auth/login'); // Redirige al usuario a la página de inicio de sesión
                                 Alert.alert('Sesión cerrada'); // Opcional: alerta de confirmación
                             }}>
                             <Text color="white">Cerrar sesión</Text>
