@@ -63,7 +63,7 @@ const HelpPage = () => {
     };
 
     return (
-        <Div p={50} alignItems='center' justifyContent='center'>
+        <Div flex={1} justifyContent="center" alignItems="center">
             <Button
                 bg="red500"
                 h={200}
