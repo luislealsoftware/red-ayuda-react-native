@@ -15,14 +15,24 @@
       "supportsTablet": true
     },
     "android": {
+      "permissions": [
+    "ACCESS_NETWORK_STATE",
+    "INTERNET"
+  ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.luislealdev.redayudareactnative"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "scheme": "red-de-ayuda"
+    "scheme": "red-de-ayuda",
+    "extra": {
+      "eas": {
+        "projectId": "f7de5625-11d3-4a2b-a6c0-6c596bd22b6a"
+      }
+    }
   }
 }
