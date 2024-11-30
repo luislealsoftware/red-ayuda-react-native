@@ -24,38 +24,63 @@ const AppHome = () => {
         })();
 
         // Obtener solicitudes de emergencia
-        const fetchEmergencyRequests = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            const userId = user?.id;
-
-            // Obtener amigos
-            const { data: friendsData, error: friendsError } = await supabase
-                .from('friends')
-                .select('friend_id')
-                .eq('user_id', userId);
-
-            if (friendsError) {
-                console.error('Error al obtener amigos:', friendsError.message);
-                return;
+        // Función para obtener solicitudes de emergencia
+    const fetchEmergencyRequests = async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          const userId = user?.id;
+  
+          if (!userId) return;
+  
+          // Obtener amigos
+          const { data: friendsData, error: friendsError } = await supabase
+            .from('friends')
+            .select('friend_id')
+            .eq('user_id', userId);
+  
+          if (friendsError) {
+            console.error('Error al obtener amigos:', friendsError.message);
+            return;
+          }
+  
+          const friendIds = friendsData.map(friend => friend.friend_id);
+  
+          // Obtener solicitudes de emergencia
+          const { data: emergencyData, error: emergencyError } = await supabase
+            .from('emergency_requests')
+            .select('*')
+            .in('user_id', [userId, ...friendIds]);  // Relacionar con amigos
+  
+          if (emergencyError) {
+            console.error('Error al obtener solicitudes de emergencia:', emergencyError.message);
+            setErrorMsg('Error al obtener solicitudes de emergencia');
+            return;
+          }
+  
+          // Ahora, por cada solicitud de emergencia, obtenemos el nombre del usuario
+          const requestsWithNames = await Promise.all(emergencyData.map(async (request) => {
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('name')
+              .eq('auth_user_id', request.user_id)
+              .single(); // Obtén solo un resultado (un único usuario)
+  
+            if (userError) {
+              console.error('Error al obtener el nombre del usuario:', userError.message);
+              return { ...request, user_name: 'Nombre no disponible' };
             }
-
-            const friendIds = friendsData.map(friend => friend.friend_id);
-
-            // Obtener solicitudes de emergencia
-            const { data: emergencyData, error: emergencyError } = await supabase
-                .from('emergency_requests')
-                .select('*')
-                .in('user_id', [userId, ...friendIds]);
-
-            if (emergencyError) {
-                console.error('Error al obtener solicitudes de emergencia:', emergencyError.message);
-                return;
-            }
-
-            setEmergencyRequests(emergencyData);
-        };
-
-        fetchEmergencyRequests();
+  
+            return { ...request, user_name: userData?.name };
+          }));
+  
+          setEmergencyRequests(requestsWithNames);  // Asigna la lista con los nombres
+        } catch (error) {
+          console.error("Error al obtener solicitudes de emergencia:", error);
+          setErrorMsg('Hubo un error al obtener las solicitudes de emergencia');
+        }
+      };
+  
+      fetchEmergencyRequests();
     }, []);
 
     return (
@@ -91,7 +116,7 @@ const AppHome = () => {
                                 }}
                             >
                                 <Callout style={{ padding: 10 }}>
-                                    <Text fontWeight="bold" fontSize="lg" color="black">{request.user_id}</Text>
+                                    <Text fontWeight="bold" fontSize="lg" color="black"> {request.user_name || 'Nombre no disponible'}</Text>
                                     <Text fontSize="md" color="gray">Status: {request.status}</Text>
                                     <Text fontSize="sm" color="gray">Fecha: {new Date(request.created_at).toLocaleString()}</Text>
                                 </Callout>

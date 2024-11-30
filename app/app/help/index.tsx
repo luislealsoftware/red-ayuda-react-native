@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Div, Icon, Text } from 'react-native-magnus';
-import { supabase } from '../../../lib/supabase';
-import * as Location from 'expo-location';
 import { Alert } from 'react-native';
+import { Button, Div, Icon, Text } from 'react-native-magnus';
+import * as Location from 'expo-location';
+import { supabase } from '../../../lib/supabase';
+import * as Notifications from 'expo-notifications';
 
 const HelpPage = () => {
     interface LocationType {
         latitude: number;
         longitude: number;
     }
-    
+
     const [location, setLocation] = useState<LocationType | null>(null);
 
     // Función para obtener la ubicación actual
@@ -33,33 +34,98 @@ const HelpPage = () => {
         }
     };
 
+    // Obtener ubicación al cargar el componente
     useEffect(() => {
-        getLocation(); // Obtener la ubicación al cargar la página
+        getLocation();
     }, []);
 
+    // Función para enviar la solicitud de emergencia y notificaciones
     const sendEmergencyRequest = async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             const userId = user?.id;
 
-            if (!location) {
-                Alert.alert('Error', 'No se pudo obtener tu ubicación. Inténtalo de nuevo.');
+            if (!userId || !location) {
+                Alert.alert('Error', 'No se pudo procesar tu solicitud.');
                 return;
             }
 
-            const { error } = await supabase
+            // Insertar la solicitud de emergencia en la base de datos
+            const { data: emergencyRequest, error: insertError } = await supabase
                 .from('emergency_requests')
-                .insert([{ user_id: userId, latitude: location.latitude, longitude: location.longitude }]);
+                .insert([{
+                    user_id: userId,
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    status: 'pending',
+                }])
+                .select()
+                .single();
 
-            if (error) {
-                console.error('Error al enviar la solicitud de emergencia:', error.message);
-                Alert.alert('Error', 'Hubo un problema al enviar la solicitud de emergencia.');
-            } else {
-                Alert.alert('Alerta enviada', 'Tu solicitud de ayuda ha sido enviada a tu red.');
+            if (insertError || !emergencyRequest) {
+                console.error('Error al insertar la solicitud:', insertError?.message);
+                Alert.alert('Error', 'Hubo un problema al enviar la solicitud.');
+                return;
             }
-        } catch (err) {
-            console.error('Error al intentar enviar solicitud:', err);
+
+            // Obtener la lista de amigos y sus tokens
+            const { data: friends, error: friendsError } = await supabase
+                .from('friends')
+                .select('friend_id')
+                .eq('user_id', userId);
+
+            if (friendsError || !friends) {
+                console.error('Error al obtener amigos:', friendsError?.message);
+                Alert.alert('Error', 'No se pudo notificar a tus amigos.');
+                return;
+            }
+
+            const friendIds = friends.map(friend => friend.friend_id);
+
+            const { data: friendUsers, error: usersError } = await supabase
+                .from('users')
+                .select('push_token')
+                .in('auth_user_id', friendIds);
+
+            if (usersError || !friendUsers) {
+                console.error('Error al obtener los tokens de los amigos:', usersError?.message);
+                Alert.alert('Error', 'No se pudo enviar notificaciones.');
+                return;
+            }
+
+            // Enviar notificaciones a los amigos
+            friendUsers.forEach(async friend => {
+                if (friend.push_token) {
+                    await sendPushNotification(friend.push_token, emergencyRequest.id);
+                }
+            });
+
+            Alert.alert('Alerta enviada', 'Tu solicitud ha sido enviada a tu red.');
+        } catch (error) {
+            console.error('Error al procesar la solicitud de emergencia:', error);
+            Alert.alert('Error', 'Ocurrió un problema al procesar tu solicitud.');
         }
+    };
+
+    // Función para enviar notificaciones push
+    const sendPushNotification = async (expoPushToken: string, requestId: number) => {
+        const message = {
+            to: expoPushToken,
+            sound: 'default',
+            title: 'Solicitud de Emergencia',
+            body: 'Un amigo necesita tu ayuda. Revisa su ubicación.',
+            data: { emergencyRequestId: requestId },
+        };
+
+        await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Accept-encoding': 'gzip, deflate',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(message),
+        });
     };
 
     return (
@@ -77,8 +143,7 @@ const HelpPage = () => {
                 <Icon name="alert-triangle" color="white" fontFamily="Feather" fontSize={50} />
             </Button>
             <Text fontSize="2xl" mt="xl" textAlign="center">
-                <Icon name='infocirlceo' fontSize="2xl" />
-                Al presionar el botón se enviará una alerta a toda tu red.
+                Al presionar el botón, se enviará una alerta a toda tu red.
             </Text>
         </Div>
     );
